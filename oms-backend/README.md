@@ -1,58 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Order Management System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+An assessment-ready order management system built with Laravel 13, Sanctum, MySQL, and Vue 3.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.3 and Composer
+- MySQL 8+
+- Node.js 22.18+ and npm
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Sanctum login/logout and role-based API authorization
+- Admin, manager, and staff roles
+- Customer and product CRUD with safe deactivation
+- Paginated, searchable, filterable, and sortable order listing
+- Backend-calculated order totals and item price snapshots
+- Status transitions, assignment, status history, notes, notifications, and audit logs
+- Transactional stock reservation on confirmation and restoration on cancellation
+- Date-scoped dashboard metrics and daily/weekly/monthly revenue trends
+- Seeded demo users and realistic operational data
 
-## Learning Laravel
+## Demo credentials
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@oms.test | password |
+| Manager | manager@oms.test | password |
+| Staff | staff1@oms.test | password |
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+These are local assessment accounts only. Change or remove them before any non-local deployment.
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## Local setup
 
-## Agentic Development
+Create a MySQL database named `oms`, then configure its credentials in `oms-backend/.env`.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Backend, from the repository root:
 
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+```powershell
+cd oms-backend
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+composer install
+php artisan key:generate
+php artisan migrate:fresh --seed
+php artisan serve --host=127.0.0.1 --port=8000
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+`migrate:fresh` drops existing tables; use it only for a new/local assessment database. The seed creates 5 users, 100 customers, 50 products, and 520 orders.
 
-## Contributing
+In another terminal:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```powershell
+cd oms-frontend
+npm install
+npm run dev -- --host 127.0.0.1 --port 5173
+```
 
-## Code of Conduct
+The frontend API URL defaults to `http://127.0.0.1:8000/api` in `oms-frontend/src/api.ts`.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## API
 
-## Security Vulnerabilities
+All routes except login require a Sanctum bearer token. Login accepts `email` and `password`; the token is returned at `data.token`. Send it as `Authorization: Bearer <token>` on subsequent requests. JSON responses use a `success` flag and `data` payload; validation failures return HTTP 422.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Routes
 
-## License
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/login` | Authenticate and issue token |
+| POST | `/api/logout` | Revoke current token |
+| GET | `/api/user` | Current user |
+| GET, POST | `/api/customers` | List or create customers |
+| GET, PUT, DELETE | `/api/customers/{customer}` | View, update, or remove customer |
+| GET, POST | `/api/products` | List or create products |
+| GET, PUT, DELETE | `/api/products/{product}` | View, update, or remove product |
+| GET, POST | `/api/orders` | List or create orders |
+| GET, PUT, DELETE | `/api/orders/{order}` | View, update, or remove order |
+| POST | `/api/orders/{order}/status` | Change status |
+| POST | `/api/orders/{order}/assign` | Assign staff |
+| POST | `/api/orders/{order}/notes` | Add an order note |
+| GET | `/api/users/assignable` | List assignable staff |
+| GET | `/api/dashboard` | Date-scoped metrics and revenue trend |
+| GET | `/api/notifications` | List current user's notifications |
+| POST | `/api/notifications/read-all` | Mark current user's notifications read |
+| POST | `/api/notifications/{notification}/read` | Mark one owned notification read |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Create order
+
+`POST /api/orders` requires an active `customer_id`, `priority`, `order_date`, and at least one active product item:
+
+```json
+{
+  "customer_id": 1,
+  "priority": "normal",
+  "order_date": "2026-11-24",
+  "items": [
+    { "product_id": 1, "quantity": 2, "discount_cents": 0 }
+  ]
+}
+```
+
+Optional fields include `status` (`draft`, `pending`, or `confirmed`), `assigned_to`, `tax_rate` (percentage integer), `discount_cents`, and `status_remarks`. Amounts use integer cents. Prices and totals are calculated by the server, not accepted from the client.
+
+Status changes use `POST /api/orders/{order}/status` with `status` and optional `remarks`. Valid transitions are draft → pending → confirmed → processing → ready → completed, with cancellation permitted before completion. Completed and cancelled orders are terminal.
+
+### Filtering
+
+- Orders: `search`, `status`, `priority`, `customer_id`, `assigned_to` (including `unassigned`), `from_date`, `to_date`, `sort` (`order_date`, `total_cents`, `status`, `priority`), `direction` (`asc|desc`), `page`, and `per_page` (1–100).
+- Customers/products: `search`, `is_active`, `per_page`.
+- Dashboard: `from_date`, `to_date`, and `group_by=day|week|month`. If only `to_date` is provided, the default 30-day window ends on that date.
+
+### Roles and inventory
+
+- Admins can manage customers/products and create, edit, assign, and delete cancelled orders.
+- Managers can create/edit orders, assign staff, and change order statuses.
+- Staff can view and update statuses/add notes only on orders assigned to them.
+- Customer/product records referenced by orders are deactivated instead of deleted.
+- Stock is reserved when an order is confirmed; cancelling a stock-committed order restores it. These changes are transactional.
+
+## Architecture
+
+`OrderService` owns order creation and updates, total recalculation, status transitions, and stock changes. Currency is stored in integer cents. MySQL is the operational database; automated feature tests use in-memory SQLite. See [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) for architecture, performance, concurrency, security, and known future work.
+
+## Verification
+
+```powershell
+cd oms-backend
+php artisan test
+vendor\bin\pint.bat --test
+
+cd ..\oms-frontend
+npm run build
+```
