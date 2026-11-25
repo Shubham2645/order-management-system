@@ -118,7 +118,7 @@ Status changes use `POST /api/orders/{order}/status` with `status` and optional 
 
 ## Architecture
 
-`OrderService` owns order creation and updates, total recalculation, status transitions, and stock changes. Currency is stored in integer cents. MySQL is the operational database; automated feature tests use in-memory SQLite. See [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) for architecture, performance, concurrency, security, and known future work.
+`OrderService` owns order creation and updates, total recalculation, status transitions, and stock changes. Currency is stored in integer cents. MySQL is the operational database; automated feature tests use in-memory SQLite. See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for the full endpoint reference and [TECHNICAL_NOTES.md](TECHNICAL_NOTES.md) for architecture, performance, concurrency, security, and known future work.
 
 ## Verification
 
